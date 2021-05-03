@@ -78,7 +78,7 @@ func handleWebSocket(c echo.Context) error {
 }
 
 func connectDb() *sql.DB {
-	db, err := sql.Open("postgres", fmt.Sprintf("user=%s dbname=gw-covid sslmode=disable", os.Getenv("POSTGRES_USER")))
+	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
 	}
