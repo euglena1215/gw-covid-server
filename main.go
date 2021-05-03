@@ -1,12 +1,16 @@
 package main
 
 import (
-	"os"
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	_ "github.com/lib/pq"
 	"golang.org/x/net/websocket"
 )
 
@@ -20,9 +24,26 @@ type CreateRoomResponse struct {
 }
 
 func handleCreateRoom(c echo.Context) error {
-	res := CreateRoomResponse {
-		RoomId: "xxxxx",
-		UserId: "xxxxxx",
+	db := connectDb()
+	defer db.Close()
+
+	roomId, _ := uuid.NewUUID()
+	roomStmt, roomErr := db.Prepare("INSERT INTO rooms(id) VALUES($1)")
+	if roomErr != nil {
+		log.Fatal(roomErr)
+	}
+	roomStmt.Exec(roomId.String())
+
+	userId, _ := uuid.NewUUID()
+	userStmt, userErr := db.Prepare("INSERT INTO users(id, room_id) VALUES($1,$2)")
+	if userErr != nil {
+		log.Fatal(userErr)
+	}
+	userStmt.Exec(userId.String(), roomId.String())
+
+	res := CreateRoomResponse{
+		RoomId: roomId.String(),
+		UserId: userId.String(),
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -56,6 +77,14 @@ func handleWebSocket(c echo.Context) error {
 	return nil
 }
 
+func connectDb() *sql.DB {
+	db, err := sql.Open("postgres", fmt.Sprintf("user=%s dbname=gw-covid sslmode=disable", os.Getenv("POSTGRES_USER")))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return db
+}
+
 func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
@@ -63,5 +92,5 @@ func main() {
 	e.POST("/room", handleCreateRoom)
 	e.GET("/ws", handleWebSocket)
 	e.Static("/", "public")
-	e.Logger.Fatal(e.Start(":"+os.Getenv("PORT")))
+	e.Logger.Fatal(e.Start(":" + os.Getenv("PORT")))
 }
