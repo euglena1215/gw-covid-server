@@ -1,8 +1,10 @@
 package main
 
 import (
-	"net/http"
+	"os"
 	"fmt"
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"golang.org/x/net/websocket"
@@ -46,5 +48,5 @@ func main() {
 	e.GET("/ping", handlePing)
 	e.GET("/ws", handleWebSocket)
 	e.Static("/", "public")
-	e.Logger.Fatal(e.Start(":8080"))
+	e.Logger.Fatal(e.Start(":"+os.Getenv("PORT")))
 }
