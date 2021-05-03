@@ -14,6 +14,20 @@ func handlePing(c echo.Context) error {
 	return c.String(http.StatusOK, "pong")
 }
 
+type CreateRoomResponse struct {
+	RoomId string `json:"room_id"`
+	UserId string `json:"user_id"`
+}
+
+func handleCreateRoom(c echo.Context) error {
+	res := CreateRoomResponse {
+		RoomId: "xxxxx",
+		UserId: "xxxxxx",
+	}
+
+	return c.JSON(http.StatusOK, res)
+}
+
 func handleWebSocket(c echo.Context) error {
 	websocket.Handler(func(ws *websocket.Conn) {
 		defer ws.Close()
@@ -46,6 +60,7 @@ func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.GET("/ping", handlePing)
+	e.POST("/room", handleCreateRoom)
 	e.GET("/ws", handleWebSocket)
 	e.Static("/", "public")
 	e.Logger.Fatal(e.Start(":"+os.Getenv("PORT")))
