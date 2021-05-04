@@ -25,26 +25,31 @@ type Message struct {
 
 var broadcast = make(chan Message)
 
+type RoomWebSocketRequest struct {
+	UserId string `query:"user_id"`
+}
+
 func handleRoomWebsocket(c echo.Context) error {
+	req := new(RoomWebSocketRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+	pp.Println(req)
+
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return err
 	}
 	defer ws.Close()
-
+	
 	roomId := c.Param("room_id")
 	allClients[roomId] = append(allClients[roomId], ws)
-	pp.Println(roomId)
-	pp.Println(ws)
-	pp.Println(allClients)
 
 	message := Message{
 		Event:  "joinRoom",
 		RoomId: roomId,
-		UserId: "xxxxxx", // あとで Authorization Header から取得する
+		UserId: req.UserId,
 	}
-
-	pp.Print(message)
 
 	broadcast <- message
 
