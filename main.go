@@ -24,7 +24,8 @@ func main() {
 	e.GET("/ping", handlePing)
 	e.POST("/room", handleCreateRoom)
 	e.POST("/room/join", handleJoinRoom)
-	e.GET("/ws", handleWebSocket)
-	e.Static("/", "public")
+	e.GET("/ws/room/:room_id", handleRoomWebsocket)
 	e.Logger.Fatal(e.Start(":" + os.Getenv("PORT")))
+
+	go receiveBroadCast()
 }
