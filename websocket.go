@@ -174,6 +174,12 @@ func startAvoidYuriko(roomId string) {
 					}()
 				} else {
 					finished = true
+					message := Message{
+						Event:  "AvoidYuriko:Finish",
+						RoomId: roomId,
+					}
+
+					broadcast <- message
 				}
 			}
 		}
