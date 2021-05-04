@@ -71,9 +71,11 @@ func handleRoomWebsocket(c echo.Context) error {
 		}
 
 		switch {
-		case message.Event == "game_start:AvoidYuriko":
-			go setUpAvoidYuriko(message.RoomId)
+		case message.Event == "GameStart:AvoidYuriko":
+			go startAvoidYuriko(message.RoomId)
 			broadcast <- message
+		case message.Event == "AvoidYuriko:AddPoint":
+			go addAvoidYurikoPoint(message)
 		}
 	}
 }
@@ -110,7 +112,7 @@ type AvoidYurikoState struct {
 	UserScores map[string]int `json:"user_scores"`
 }
 
-func setUpAvoidYuriko(roomId string) {
+func startAvoidYuriko(roomId string) {
 	clients := allClients[roomId]
 
 	db := connectDb()
@@ -163,7 +165,7 @@ func setUpAvoidYuriko(roomId string) {
 						encoded, _ := json.Marshal(state)
 
 						message := Message{
-							Event:   "AvoidYuriko:state",
+							Event:   "AvoidYuriko:State",
 							RoomId:  roomId,
 							Details: string(encoded),
 						}
@@ -176,4 +178,24 @@ func setUpAvoidYuriko(roomId string) {
 			}
 		}
 	}()
+}
+
+type AddAvoidYurikoPoint struct {
+	Point int `json:"point"`
+}
+
+func addAvoidYurikoPoint(message Message) {
+	var detail AddAvoidYurikoPoint
+	err := json.Unmarshal([]byte(message.Details), &detail)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db := connectDb()
+	defer db.Close()
+
+	_, err = db.Query("UPDATE avoid_yuriko_users SET point = point + $1 WHERE user_id = $2 AND room_id = $3", detail.Point, message.UserId, message.RoomId)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
