@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/k0kubun/pp"
@@ -23,9 +24,10 @@ type Client struct {
 }
 
 type Message struct {
-	Event  string `json:"event"`
-	RoomId string `json:"room_id"`
-	UserId string `json:"user_id"`
+	Event   string `json:"event"`
+	RoomId  string `json:"room_id"`
+	UserId  string `json:"user_id"`
+	Details string `json:"details"`
 }
 
 var broadcast = make(chan Message)
@@ -103,17 +105,75 @@ func receiveBroadCast() {
 	}
 }
 
+type AvoidYurikoState struct {
+	Remaining  float32        `json:"remaining"`
+	UserScores map[string]int `json:"user_scores"`
+}
+
 func setUpAvoidYuriko(roomId string) {
 	clients := allClients[roomId]
 
 	db := connectDb()
 	defer db.Close()
 
+	var userIds []string
 	for _, client := range clients {
+		userIds = append(userIds, client.UserId)
+	}
+
+	for _, userId := range userIds {
 		stmt, err := db.Prepare("INSERT INTO avoid_yuriko_users(user_id, room_id) VALUES($1,$2)")
 		if err != nil {
 			log.Fatal(err)
 		}
-		stmt.Exec(client.UserId, roomId)
+		stmt.Exec(userId, roomId)
 	}
+
+	go func() {
+		t := time.NewTicker(500 * time.Millisecond)
+		defer t.Stop()
+
+		const MAX_TIME = 30
+		var time float32 = MAX_TIME
+
+		for finished := false; !finished; {
+			select {
+			case <-t.C:
+				if time > 0 {
+					time -= 0.5
+
+					go func() {
+						db := connectDb()
+						defer db.Close()
+
+						userScore := map[string]int{}
+						for _, userId := range userIds {
+							var point int
+							err := db.QueryRow("SELECT point FROM avoid_yuriko_users WHERE room_id = $1 AND user_id = $2", roomId, userId).Scan(&point)
+							if err != nil {
+								log.Fatal(err)
+							}
+							userScore[userId] = point
+						}
+
+						state := AvoidYurikoState{
+							Remaining:  time,
+							UserScores: userScore,
+						}
+						encoded, _ := json.Marshal(state)
+
+						message := Message{
+							Event:   "AvoidYuriko:state",
+							RoomId:  roomId,
+							Details: string(encoded),
+						}
+
+						broadcast <- message
+					}()
+				} else {
+					finished = true
+				}
+			}
+		}
+	}()
 }
