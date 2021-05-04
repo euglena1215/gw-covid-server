@@ -19,6 +19,8 @@ func connectDb() *sql.DB {
 }
 
 func main() {
+	go receiveBroadCast()
+
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.GET("/ping", handlePing)
@@ -26,6 +28,4 @@ func main() {
 	e.POST("/room/join", handleJoinRoom)
 	e.GET("/ws/room/:room_id", handleRoomWebsocket)
 	e.Logger.Fatal(e.Start(":" + os.Getenv("PORT")))
-
-	go receiveBroadCast()
 }
