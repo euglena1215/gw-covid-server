@@ -15,7 +15,12 @@ const (
 )
 
 var upgrader = websocket.Upgrader{ReadBufferSize: socketBufferSize, WriteBufferSize: socketBufferSize}
-var allClients = map[string][]*websocket.Conn{}
+var allClients = map[string][]Client{}
+
+type Client struct {
+	Ws     *websocket.Conn
+	UserId string
+}
 
 type Message struct {
 	Event  string `json:"event"`
@@ -41,9 +46,13 @@ func handleRoomWebsocket(c echo.Context) error {
 		return err
 	}
 	defer ws.Close()
-	
+
 	roomId := c.Param("room_id")
-	allClients[roomId] = append(allClients[roomId], ws)
+	client := Client{
+		Ws:     ws,
+		UserId: req.UserId,
+	}
+	allClients[roomId] = append(allClients[roomId], client)
 
 	message := Message{
 		Event:  "joinRoom",
@@ -69,7 +78,7 @@ func receiveBroadCast() {
 			pp.Print(message)
 			clients := allClients[message.RoomId]
 			for _, client := range clients {
-				err := client.WriteJSON(message)
+				err := client.Ws.WriteJSON(message)
 				if err != nil {
 					log.Fatal(err)
 				}

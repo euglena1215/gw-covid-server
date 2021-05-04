@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -78,4 +80,47 @@ func handleJoinRoom(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, res)
+}
+
+type SelectGameRequest struct {
+	GameName string `json:"game_name"`
+	RoomId   string `json:"room_id"`
+	UserId   string `json:"user_id"`
+}
+
+func handleSelectGame(c echo.Context) error {
+	req := new(SelectGameRequest)
+	if err := c.Bind(req); err != nil {
+		return err
+	}
+
+	switch {
+	case req.GameName == "AvoidYuriko":
+		go setUpAvoidYuriko(req.RoomId)
+	}
+
+	message := Message{
+		Event:  fmt.Sprintf("game_start:%s", req.GameName),
+		RoomId: req.RoomId,
+		UserId: req.UserId,
+	}
+
+	broadcast <- message
+
+	return c.String(http.StatusOK, "{}")
+}
+
+func setUpAvoidYuriko(roomId string) {
+	clients := allClients[roomId]
+
+	db := connectDb()
+	defer db.Close()
+
+	for _, client := range clients {
+		stmt, err := db.Prepare("INSERT INTO avoid_yuriko_users(user_id, room_id) VALUES($1,$2)")
+		if err != nil {
+			log.Fatal(err)
+		}
+		stmt.Exec(client.UserId, roomId)
+	}
 }
