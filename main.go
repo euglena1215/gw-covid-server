@@ -27,6 +27,5 @@ func main() {
 	e.POST("/room", handleCreateRoom)
 	e.POST("/room/join", handleJoinRoom)
 	e.GET("/ws/room/:room_id", handleRoomWebsocket)
-	e.POST("/room/select_game", handleSelectGame)
 	e.Logger.Fatal(e.Start(":" + os.Getenv("PORT")))
 }
