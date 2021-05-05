@@ -48,5 +48,5 @@ type AvoidYurikoAddPointDetail struct {
 	Point int `json:"point"`
 }
 
-var broadcast = make(chan Message)
+var broadcast = make(chan Message, 100)
 
