@@ -107,6 +107,10 @@ func handleRoomWebsocket(c echo.Context) error {
 
 func readMessage(ws *websocket.Conn) (Message, error) {
 	_, msg, err := ws.ReadMessage()
+	if len(msg) == 0 {
+		return Message{}, nil
+	}
+
 	message := new(Message)
 	if err := json.Unmarshal(msg, message); err != nil {
 		log.Fatal(err)
