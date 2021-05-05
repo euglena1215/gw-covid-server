@@ -25,8 +25,6 @@ type Client struct {
 	UserId string
 }
 
-var broadcast = make(chan Message)
-
 type RoomWebSocketRequest struct {
 	UserId string `query:"user_id"`
 }
@@ -101,7 +99,12 @@ func handleRoomWebsocket(c echo.Context) error {
 
 			broadcast <- message
 		case message.Event == EVENT_AVOID_YURIKO_ADD_POINT:
-			go addAvoidYurikoPoint(message)
+			go func() {
+				err = addAvoidYurikoPoint(message)
+				if err != nil {
+					c.Logger().Error(err)
+				}
+			}()
 		}
 	}
 }
@@ -229,7 +232,7 @@ func addAvoidYurikoPoint(message Message) error {
 	var detail AvoidYurikoAddPointDetail
 	err := json.Unmarshal([]byte(message.Details), &detail)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	db, err := initDb()
