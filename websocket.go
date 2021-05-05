@@ -25,18 +25,7 @@ type Client struct {
 	UserId string
 }
 
-type Message struct {
-	Event   string `json:"event"`
-	RoomId  string `json:"room_id"`
-	UserId  string `json:"user_id"`
-	Details string `json:"details"`
-}
-
 var broadcast = make(chan Message)
-
-type MessageJoinRoomDetail struct {
-	PlayerCount int `json:"player_count"`
-}
 
 type RoomWebSocketRequest struct {
 	UserId string `query:"user_id"`
@@ -79,7 +68,7 @@ func handleRoomWebsocket(c echo.Context) error {
 	}
 	allClients[roomId] = append(allClients[roomId], client)
 
-	details := MessageJoinRoomDetail{
+	details := RoomJoinDetail{
 		PlayerCount: len(allClients[roomId]),
 	}
 	encoded, err := json.Marshal(details)
@@ -87,7 +76,7 @@ func handleRoomWebsocket(c echo.Context) error {
 		return err
 	}
 	message := Message{
-		Event:   "Room:Join",
+		Event:   EVENT_ROOM_JOIN,
 		RoomId:  roomId,
 		UserId:  req.UserId,
 		Details: string(encoded),
@@ -102,7 +91,7 @@ func handleRoomWebsocket(c echo.Context) error {
 		}
 
 		switch {
-		case message.Event == "GameStart:AvoidYuriko":
+		case message.Event == EVENT_GAME_START_AVOID_YURIKO:
 			go func() {
 				err = startAvoidYuriko(message.RoomId)
 				if err != nil {
@@ -111,7 +100,7 @@ func handleRoomWebsocket(c echo.Context) error {
 			}()
 
 			broadcast <- message
-		case message.Event == "AvoidYuriko:AddPoint":
+		case message.Event == EVENT_AVOID_YURIKO_ADD_POINT:
 			go addAvoidYurikoPoint(message)
 		}
 	}
@@ -137,7 +126,7 @@ func receiveBroadCast() {
 			pp.Print(message)
 			clients := allClients[message.RoomId]
 			for _, client := range clients {
-				if message.Event == "Room:Join" || client.UserId != message.UserId {
+				if message.Event == EVENT_ROOM_JOIN || client.UserId != message.UserId {
 					err := client.Ws.WriteJSON(message)
 					if err != nil {
 						log.Fatal(err)
@@ -146,11 +135,6 @@ func receiveBroadCast() {
 			}
 		}
 	}
-}
-
-type AvoidYurikoState struct {
-	Remaining  float32        `json:"remaining"`
-	UserScores map[string]int `json:"user_scores"`
 }
 
 func startAvoidYuriko(roomId string) error {
@@ -203,7 +187,7 @@ func startAvoidYuriko(roomId string) error {
 								userScore[userId] = point
 							}
 
-							state := AvoidYurikoState{
+							state := AvoidYurikoStateDetail{
 								Remaining:  time,
 								UserScores: userScore,
 							}
@@ -213,7 +197,7 @@ func startAvoidYuriko(roomId string) error {
 							}
 
 							message := Message{
-								Event:   "AvoidYuriko:State",
+								Event:   EVENT_AVOID_YURIKO_STATE,
 								RoomId:  roomId,
 								Details: string(encoded),
 							}
@@ -228,7 +212,7 @@ func startAvoidYuriko(roomId string) error {
 				} else {
 					finished = true
 					message := Message{
-						Event:  "AvoidYuriko:Finish",
+						Event:  EVENT_AVOID_YURIKO_FINISH,
 						RoomId: roomId,
 					}
 
@@ -241,12 +225,8 @@ func startAvoidYuriko(roomId string) error {
 	return nil
 }
 
-type AddAvoidYurikoPoint struct {
-	Point int `json:"point"`
-}
-
 func addAvoidYurikoPoint(message Message) error {
-	var detail AddAvoidYurikoPoint
+	var detail AvoidYurikoAddPointDetail
 	err := json.Unmarshal([]byte(message.Details), &detail)
 	if err != nil {
 		log.Fatal(err)
@@ -268,7 +248,7 @@ func addAvoidYurikoPoint(message Message) error {
 
 func sendSudpendEvent(err error, roomId string) {
 	message := Message{
-		Event:   "AvoidYuriko:Suspend",
+		Event:   EVENT_AVOID_YURIKO_SUSPEND,
 		RoomId:  roomId,
 		Details: fmt.Sprintf("{\"message\": \"%s\"}", err.Error()),
 	}
