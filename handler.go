@@ -56,12 +56,12 @@ type JoinRoomResponse struct {
 func handleJoinRoom(c echo.Context) error {
 	req := new(JoinRoomRequest)
 	if err := c.Bind(req); err != nil {
-		return err
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
 	db, err := initDb()
 	if err != nil {
-		return err
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	defer db.close()
 
