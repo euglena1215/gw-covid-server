@@ -45,12 +45,6 @@ func handleRoomWebsocket(c echo.Context) error {
 	}
 	pp.Println(req)
 
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return err
-	}
-	defer ws.Close()
-
 	roomId := c.Param("room_id")
 	db, err := initDb()
 	if err != nil {
@@ -59,10 +53,15 @@ func handleRoomWebsocket(c echo.Context) error {
 	exists, err := db.existsRoomById(roomId)
 	if err != nil {
 		return err
-	}
-	if !exists {
+	} else if !exists {
 		return c.String(http.StatusNotFound, "{}")
 	}
+
+	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		return err
+	}
+	defer ws.Close()
 
 	client := Client{
 		Ws:     ws,
