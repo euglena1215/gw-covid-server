@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -51,6 +52,18 @@ func handleRoomWebsocket(c echo.Context) error {
 	defer ws.Close()
 
 	roomId := c.Param("room_id")
+	db, err := initDb()
+	if err != nil {
+		return err
+	}
+	exists, err := db.existsRoomById(roomId)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return c.String(http.StatusNotFound, "{}")
+	}
+
 	client := Client{
 		Ws:     ws,
 		UserId: req.UserId,

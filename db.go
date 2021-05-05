@@ -58,7 +58,9 @@ func (db Db) storeAvoidYurikoUser(userId string, roomId string) error {
 func (db Db) existsRoomById(roomId string) (bool, error) {
 	var exists int
 	err := db.conn.QueryRow("SELECT 1 FROM rooms WHERE id = $1", roomId).Scan(&exists)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return false, nil
+	} else if err != nil {
 		return false, err
 	}
 
