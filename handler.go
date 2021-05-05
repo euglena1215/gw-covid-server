@@ -39,12 +39,10 @@ func handleCreateRoom(c echo.Context) error {
 		return err
 	}
 
-	res := CreateRoomResponse{
+	return c.JSON(http.StatusOK, CreateRoomResponse{
 		RoomId: roomId,
 		UserId: userId,
-	}
-
-	return c.JSON(http.StatusOK, res)
+	})
 }
 
 type JoinRoomRequest struct {
@@ -82,9 +80,7 @@ func handleJoinRoom(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
-	res := JoinRoomResponse{
+	return c.JSON(http.StatusOK, JoinRoomResponse{
 		UserId: userId,
-	}
-
-	return c.JSON(http.StatusOK, res)
+	})
 }

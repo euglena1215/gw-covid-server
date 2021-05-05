@@ -211,20 +211,25 @@ type AddAvoidYurikoPoint struct {
 	Point int `json:"point"`
 }
 
-func addAvoidYurikoPoint(message Message) {
+func addAvoidYurikoPoint(message Message) error {
 	var detail AddAvoidYurikoPoint
 	err := json.Unmarshal([]byte(message.Details), &detail)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	db := connectDb()
-	defer db.Close()
-
-	_, err = db.Query("UPDATE avoid_yuriko_users SET point = point + $1 WHERE user_id = $2 AND room_id = $3", detail.Point, message.UserId, message.RoomId)
+	db, err := initDb()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+	defer db.close()
+
+	err = db.IncrementAvoidYurikoPoint(detail.Point, message.RoomId, message.UserId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func sendSudpendEvent(err error, roomId string) {

@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"os"
+
+	_ "github.com/lib/pq"
 )
 
 type Db struct {
@@ -70,4 +72,13 @@ func (db Db) getAvoidYurikoPointByRoomIdAndUserId(roomId string, userId string) 
 		return 0, err
 	}
 	return point, nil
+}
+
+func (db Db) IncrementAvoidYurikoPoint(point int, roomId string, userId string) error {
+	_, err := db.conn.Query("UPDATE avoid_yuriko_users SET point = point + $1 WHERE user_id = $2 AND room_id = $3", point, userId, roomId)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
