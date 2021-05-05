@@ -58,7 +58,7 @@ func handleRoomWebsocket(c echo.Context) error {
 	allClients[roomId] = append(allClients[roomId], client)
 
 	message := Message{
-		Event:  "joinRoom",
+		Event:  "Room:Join",
 		RoomId: roomId,
 		UserId: req.UserId,
 	}
