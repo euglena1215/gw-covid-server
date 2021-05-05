@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -72,7 +73,13 @@ func handleRoomWebsocket(c echo.Context) error {
 
 		switch {
 		case message.Event == "GameStart:AvoidYuriko":
-			go startAvoidYuriko(message.RoomId)
+			go func() {
+				err = startAvoidYuriko(message.RoomId)
+				if err != nil {
+					sendSudpendEvent(err, roomId)
+				}
+			}()
+
 			broadcast <- message
 		case message.Event == "AvoidYuriko:AddPoint":
 			go addAvoidYurikoPoint(message)
@@ -112,11 +119,14 @@ type AvoidYurikoState struct {
 	UserScores map[string]int `json:"user_scores"`
 }
 
-func startAvoidYuriko(roomId string) {
+func startAvoidYuriko(roomId string) error {
 	clients := allClients[roomId]
 
-	db := connectDb()
-	defer db.Close()
+	db, err := initDb()
+	if err != nil {
+		return err
+	}
+	defer db.close()
 
 	var userIds []string
 	for _, client := range clients {
@@ -124,11 +134,9 @@ func startAvoidYuriko(roomId string) {
 	}
 
 	for _, userId := range userIds {
-		stmt, err := db.Prepare("INSERT INTO avoid_yuriko_users(user_id, room_id) VALUES($1,$2)")
-		if err != nil {
-			log.Fatal(err)
+		if err = db.storeAvoidYurikoUser(userId, roomId); err != nil {
+			return err
 		}
-		stmt.Exec(userId, roomId)
 	}
 
 	go func() {
@@ -145,32 +153,43 @@ func startAvoidYuriko(roomId string) {
 					time -= 0.5
 
 					go func() {
-						db := connectDb()
-						defer db.Close()
-
-						userScore := map[string]int{}
-						for _, userId := range userIds {
-							var point int
-							err := db.QueryRow("SELECT point FROM avoid_yuriko_users WHERE room_id = $1 AND user_id = $2", roomId, userId).Scan(&point)
+						err = func() error {
+							db, err := initDb()
 							if err != nil {
-								log.Fatal(err)
+								return err
 							}
-							userScore[userId] = point
-						}
+							defer db.close()
 
-						state := AvoidYurikoState{
-							Remaining:  time,
-							UserScores: userScore,
-						}
-						encoded, _ := json.Marshal(state)
+							userScore := map[string]int{}
+							for _, userId := range userIds {
+								point, err := db.getAvoidYurikoPointByRoomIdAndUserId(roomId, userId)
+								if err != nil {
+									return err
+								}
+								userScore[userId] = point
+							}
 
-						message := Message{
-							Event:   "AvoidYuriko:State",
-							RoomId:  roomId,
-							Details: string(encoded),
-						}
+							state := AvoidYurikoState{
+								Remaining:  time,
+								UserScores: userScore,
+							}
+							encoded, err := json.Marshal(state)
+							if err != nil {
+								return err
+							}
 
-						broadcast <- message
+							message := Message{
+								Event:   "AvoidYuriko:State",
+								RoomId:  roomId,
+								Details: string(encoded),
+							}
+
+							broadcast <- message
+							return nil
+						}()
+						if err != nil {
+							sendSudpendEvent(err, roomId)
+						}
 					}()
 				} else {
 					finished = true
@@ -184,6 +203,8 @@ func startAvoidYuriko(roomId string) {
 			}
 		}
 	}()
+
+	return nil
 }
 
 type AddAvoidYurikoPoint struct {
@@ -204,4 +225,13 @@ func addAvoidYurikoPoint(message Message) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func sendSudpendEvent(err error, roomId string) {
+	message := Message{
+		Event:   "AvoidYuriko:Suspend",
+		RoomId:  roomId,
+		Details: fmt.Sprintf("{\"message\": \"%s\"}", err.Error()),
+	}
+	broadcast <- message
 }

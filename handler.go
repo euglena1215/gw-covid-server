@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -17,26 +18,30 @@ type CreateRoomResponse struct {
 }
 
 func handleCreateRoom(c echo.Context) error {
-	db := connectDb()
-	defer db.Close()
-
-	roomId, _ := uuid.NewUUID()
-	roomStmt, roomErr := db.Prepare("INSERT INTO rooms(id) VALUES($1)")
-	if roomErr != nil {
-		return roomErr
+	db, err := initDb()
+	if err != nil {
+		return err
 	}
-	roomStmt.Exec(roomId.String())
+	defer db.close()
 
-	userId, _ := uuid.NewUUID()
-	userStmt, userErr := db.Prepare("INSERT INTO users(id, room_id) VALUES($1,$2)")
-	if userErr != nil {
-		return userErr
+	roomUuid, _ := uuid.NewUUID()
+	roomId := roomUuid.String()
+	userUuid, _ := uuid.NewUUID()
+	userId := userUuid.String()
+
+	err = db.storeRoom(roomId)
+	if err != nil {
+		return err
 	}
-	userStmt.Exec(userId.String(), roomId.String())
+
+	err = db.storeUser(userId, roomId)
+	if err != nil {
+		return err
+	}
 
 	res := CreateRoomResponse{
-		RoomId: roomId.String(),
-		UserId: userId.String(),
+		RoomId: roomId,
+		UserId: userId,
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -56,25 +61,29 @@ func handleJoinRoom(c echo.Context) error {
 		return err
 	}
 
-	db := connectDb()
-	defer db.Close()
-
-	var exists int
-	err := db.QueryRow("SELECT 1 FROM rooms WHERE id = $1", req.RoomId).Scan(&exists)
+	db, err := initDb()
 	if err != nil {
-		// 対応するレコードが見つからなかった場合もここにくる
-		return c.String(http.StatusBadRequest, "{}")
+		return err
+	}
+	defer db.close()
+
+	_, err = db.existsRoomById(req.RoomId)
+	if err == sql.ErrNoRows {
+		return c.String(http.StatusNotFound, "{}")
+	} else if err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
-	userId, _ := uuid.NewUUID()
-	userStmt, userErr := db.Prepare("INSERT INTO users(id, room_id) VALUES($1,$2)")
-	if userErr != nil {
-		return userErr
+	userUuid, _ := uuid.NewUUID()
+	userId := userUuid.String()
+
+	err = db.storeUser(userId, req.RoomId)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	userStmt.Exec(userId.String(), req.RoomId)
 
 	res := JoinRoomResponse{
-		UserId: userId.String(),
+		UserId: userId,
 	}
 
 	return c.JSON(http.StatusOK, res)
