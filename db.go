@@ -67,6 +67,18 @@ func (db Db) existsRoomById(roomId string) (bool, error) {
 	return exists == 1, nil
 }
 
+func (db Db) existsUserByRoomIdAndUserId(roomId string, userId string) (bool, error) {
+	var exists int
+	err := db.conn.QueryRow("SELECT 1 FROM users WHERE id = $1 AND room_id = $2", userId, roomId).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	return exists == 1, nil
+}
+
 func (db Db) getAvoidYurikoPointByRoomIdAndUserId(roomId string, userId string) (int, error) {
 	var point int
 	err := db.conn.QueryRow("SELECT point FROM avoid_yuriko_users WHERE room_id = $1 AND user_id = $2", roomId, userId).Scan(&point)

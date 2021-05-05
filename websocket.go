@@ -50,11 +50,17 @@ func handleRoomWebsocket(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	exists, err := db.existsRoomById(roomId)
-	if err != nil {
+
+	if exists, err := db.existsRoomById(roomId); err != nil {
 		return err
 	} else if !exists {
-		return c.String(http.StatusNotFound, "{}")
+		return c.String(http.StatusNotFound, "{\"message\":\"部屋が見つかりません\"}")
+	}
+
+	if exists, err := db.existsUserByRoomIdAndUserId(roomId, req.UserId); err != nil {
+		return err
+	} else if !exists {
+		return c.String(http.StatusBadRequest, "{\"message\":\"存在しないユーザーで入室しようとしています\"}")
 	}
 
 	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
