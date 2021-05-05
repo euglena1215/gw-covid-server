@@ -103,7 +103,7 @@ func receiveBroadCast() {
 			pp.Print(message)
 			clients := allClients[message.RoomId]
 			for _, client := range clients {
-				if client.UserId != message.UserId {
+				if message.Event == "Room:Join" || client.UserId != message.UserId {
 					err := client.Ws.WriteJSON(message)
 					if err != nil {
 						log.Fatal(err)
