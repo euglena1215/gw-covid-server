@@ -34,6 +34,10 @@ type Message struct {
 
 var broadcast = make(chan Message)
 
+type MessageJoinRoomDetail struct {
+	PlayerCount int `json:"player_count"`
+}
+
 type RoomWebSocketRequest struct {
 	UserId string `query:"user_id"`
 }
@@ -75,10 +79,18 @@ func handleRoomWebsocket(c echo.Context) error {
 	}
 	allClients[roomId] = append(allClients[roomId], client)
 
+	details := MessageJoinRoomDetail{
+		PlayerCount: len(allClients[roomId]),
+	}
+	encoded, err := json.Marshal(details)
+	if err != nil {
+		return err
+	}
 	message := Message{
-		Event:  "Room:Join",
-		RoomId: roomId,
-		UserId: req.UserId,
+		Event:   "Room:Join",
+		RoomId:  roomId,
+		UserId:  req.UserId,
+		Details: string(encoded),
 	}
 
 	broadcast <- message
