@@ -164,7 +164,7 @@ func startAvoidYuriko(roomId string) error {
 		t := time.NewTicker(500 * time.Millisecond)
 		defer t.Stop()
 
-		const MAX_TIME = 30
+		const MAX_TIME = 35
 		var time float32 = MAX_TIME
 
 		for finished := false; !finished; {
