@@ -59,21 +59,7 @@ func handleRoomWebsocket(c echo.Context) error {
 		return err
 	}
 	defer func() {
-		// 対応する ws を allClients からpopする
-		allClients[roomId] = func(clients []Client, userId string) []Client {
-			reject := func(client Client, userId string) bool {
-				return client.UserId != userId
-			}
-
-			ans := make([]Client, 0)
-			for _, client := range clients {
-				if reject(client, userId) {
-					ans = append(ans, client)
-				}
-			}
-			return ans
-		}(allClients[roomId], req.UserId)
-
+		ejectClient(roomId, req.UserId)
 		ws.Close()
 	}()
 
@@ -100,7 +86,7 @@ func handleRoomWebsocket(c echo.Context) error {
 	broadcast <- message
 
 	for {
-		message, err := readMessage(ws)
+		message, err := readMessage(client, roomId)
 		if err != nil {
 			c.Logger().Error(err)
 			return err
@@ -131,11 +117,31 @@ func handleRoomWebsocket(c echo.Context) error {
 	}
 }
 
-func readMessage(ws *websocket.Conn) (Message, error) {
-	_, msg, err := ws.ReadMessage()
+func ejectClient(roomId string, userId string) {
+	// 対応する client を allClients からpopする
+	allClients[roomId] = func(clients []Client, userId string) []Client {
+		reject := func(client Client, userId string) bool {
+			return client.UserId != userId
+		}
+
+		ans := make([]Client, 0)
+		for _, client := range clients {
+			if reject(client, userId) {
+				ans = append(ans, client)
+			}
+		}
+		return ans
+	}(allClients[roomId], userId)
+}
+
+func readMessage(client Client, roomId string) (Message, error) {
+	_, msg, err := client.Ws.ReadMessage()
 	if err != nil {
-		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+		if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure) {
 			println(err.Error())
+
+			ejectClient(roomId, client.UserId)
+			client.Ws.Close()
 			return Message{}, nil
 		}
 		return Message{}, err
