@@ -60,19 +60,19 @@ func handleRoomWebsocket(c echo.Context) error {
 	}
 	defer func() {
 		// 対応する ws を allClients からpopする
-		allClients[roomId] = func(clients []Client) []Client {
+		allClients[roomId] = func(clients []Client, userId string) []Client {
 			reject := func(client Client, userId string) bool {
 				return client.UserId != userId
 			}
 
 			ans := make([]Client, 0)
 			for _, client := range clients {
-				if reject(client, req.UserId) {
+				if reject(client, userId) {
 					ans = append(ans, client)
 				}
 			}
 			return ans
-		}(allClients[roomId])
+		}(allClients[roomId], req.UserId)
 
 		ws.Close()
 	}()
@@ -153,7 +153,7 @@ func receiveBroadCast() {
 		select {
 		case message := <-broadcast:
 			println("send")
-			pp.Print(message)
+			pp.Println(message)
 			clients := allClients[message.RoomId]
 			for _, client := range clients {
 				if message.Event == EVENT_ROOM_JOIN || client.UserId != message.UserId {
