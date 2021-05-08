@@ -105,6 +105,7 @@ func handleRoomWebsocket(c echo.Context) error {
 			c.Logger().Error(err)
 			return err
 		}
+		println("receive")
 		pp.Println(message)
 
 		switch {
