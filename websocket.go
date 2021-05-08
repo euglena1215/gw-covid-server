@@ -134,6 +134,10 @@ func handleRoomWebsocket(c echo.Context) error {
 func readMessage(ws *websocket.Conn) (Message, error) {
 	_, msg, err := ws.ReadMessage()
 	if err != nil {
+		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			println(err.Error())
+			return Message{}, nil
+		}
 		return Message{}, err
 	}
 	if len(msg) == 0 {
