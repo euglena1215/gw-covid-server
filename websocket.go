@@ -86,6 +86,7 @@ func handleRoomWebsocket(c echo.Context) error {
 		message, err := readMessage(ws)
 		if err != nil {
 			c.Logger().Error(err)
+			return err
 		}
 
 		switch {
@@ -99,10 +100,11 @@ func handleRoomWebsocket(c echo.Context) error {
 
 			broadcast <- message
 		case message.Event == EVENT_AVOID_YURIKO_ADD_POINT:
-			go func() {
+			go func() error {
 				err = addAvoidYurikoPoint(message)
 				if err != nil {
 					c.Logger().Error(err)
+					return err
 				}
 			}()
 		}
