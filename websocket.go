@@ -105,6 +105,7 @@ func handleRoomWebsocket(c echo.Context) error {
 			c.Logger().Error(err)
 			return err
 		}
+		pp.Println(message)
 
 		switch {
 		case message.Event == EVENT_GAME_START_AVOID_YURIKO:
@@ -150,6 +151,7 @@ func receiveBroadCast() {
 	for {
 		select {
 		case message := <-broadcast:
+			println("send")
 			pp.Print(message)
 			clients := allClients[message.RoomId]
 			for _, client := range clients {
