@@ -58,7 +58,24 @@ func handleRoomWebsocket(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	defer ws.Close()
+	defer func() {
+		// 対応する ws を allClients からpopする
+		allClients[roomId] = func(clients []Client) []Client {
+			reject := func(client Client, userId string) bool {
+				return client.UserId != userId
+			}
+
+			ans := make([]Client, 0)
+			for _, client := range clients {
+				if reject(client, req.UserId) {
+					ans = append(ans, client)
+				}
+			}
+			return ans
+		}(allClients[roomId])
+
+		ws.Close()
+	}()
 
 	client := Client{
 		Ws:     ws,
