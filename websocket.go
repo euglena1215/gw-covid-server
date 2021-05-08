@@ -106,6 +106,7 @@ func handleRoomWebsocket(c echo.Context) error {
 					c.Logger().Error(err)
 					return err
 				}
+				return nil
 			}()
 		}
 	}
