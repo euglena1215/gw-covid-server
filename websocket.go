@@ -139,7 +139,7 @@ func receiveBroadCast() {
 				if message.Event == EVENT_ROOM_JOIN || client.UserId != message.UserId {
 					err := client.Ws.WriteJSON(message)
 					if err != nil {
-						log.Fatal(err)
+						log.Println(err)
 					}
 				}
 			}
