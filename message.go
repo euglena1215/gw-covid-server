@@ -1,5 +1,10 @@
 package main
 
+import (
+	"encoding/json"
+	"errors"
+)
+
 //
 // websocket Message 全体設計
 //
@@ -50,3 +55,24 @@ type AvoidYurikoAddPointDetail struct {
 
 var broadcast = make(chan Message, 100)
 
+func (message *Message) setDetail(payload interface{}) (Message, error) {
+	// 型の動的チェック
+	switch message.Event {
+	case EVENT_ROOM_JOIN:
+		_ = payload.(RoomJoinDetail)
+	case EVENT_AVOID_YURIKO_STATE:
+		_ = payload.(AvoidYurikoStateDetail)
+	case EVENT_AVOID_YURIKO_ADD_POINT:
+		_ = payload.(AvoidYurikoAddPointDetail)
+	default:
+		panic(errors.New("そのメッセージには details は存在しません"))
+	}
+
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return Message{}, err
+	}
+
+	message.Details = string(encoded)
+	return *message, nil
+}

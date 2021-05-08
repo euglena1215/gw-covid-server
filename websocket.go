@@ -66,18 +66,18 @@ func handleRoomWebsocket(c echo.Context) error {
 	}
 	allClients[roomId] = append(allClients[roomId], client)
 
+	message := Message{
+		Event:  EVENT_ROOM_JOIN,
+		RoomId: roomId,
+		UserId: req.UserId,
+	}
+
 	details := RoomJoinDetail{
 		PlayerCount: len(allClients[roomId]),
 	}
-	encoded, err := json.Marshal(details)
+	message, err = message.setDetail(details)
 	if err != nil {
 		return err
-	}
-	message := Message{
-		Event:   EVENT_ROOM_JOIN,
-		RoomId:  roomId,
-		UserId:  req.UserId,
-		Details: string(encoded),
 	}
 
 	broadcast <- message
@@ -190,19 +190,18 @@ func startAvoidYuriko(roomId string) error {
 								userScore[userId] = point
 							}
 
+							message := Message{
+								Event:  EVENT_AVOID_YURIKO_STATE,
+								RoomId: roomId,
+							}
 							state := AvoidYurikoStateDetail{
 								Remaining:  time,
 								UserScores: userScore,
 							}
-							encoded, err := json.Marshal(state)
+
+							message, err = message.setDetail(state)
 							if err != nil {
 								return err
-							}
-
-							message := Message{
-								Event:   EVENT_AVOID_YURIKO_STATE,
-								RoomId:  roomId,
-								Details: string(encoded),
 							}
 
 							broadcast <- message
